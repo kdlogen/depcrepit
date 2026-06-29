@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mvn-updates"
+version = "0.1.0"
+description = "Report available Maven dependency/plugin/property updates for a multi-module project as clean, de-duplicated text files."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "Kelemen Balint", email = "kelemenf.balint@gmail.com" }]
+keywords = ["maven", "versions-maven-plugin", "dependabot", "dependency-updates"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Software Development :: Build Tools",
+    "Environment :: Console",
+]
+# No required runtime Python dependencies (standard library only).
+# Maven (the `mvn` executable) must be available on PATH at runtime.
+dependencies = []
+
+[project.optional-dependencies]
+# Improves Dependabot YAML parsing robustness; a built-in fallback parser is used otherwise.
+yaml = ["PyYAML>=6.0"]
+dev = ["pytest>=7", "PyYAML>=6.0"]
+
+[project.scripts]
+mvn-updates = "mvn_updates.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/kdlogen/mvn-updates"
+Issues = "https://github.com/kdlogen/mvn-updates/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

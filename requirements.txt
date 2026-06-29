@@ -1,0 +1,7 @@
+# mvn-updates has NO required Python runtime dependencies (standard library only).
+#
+# External requirement: Maven (the `mvn` executable) must be on PATH.
+#
+# Optional (recommended) — more robust Dependabot YAML parsing; a built-in fallback
+# parser is used when this is not installed. Uncomment to install:
+# PyYAML>=6.0

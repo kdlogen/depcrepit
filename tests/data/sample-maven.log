@@ -1,0 +1,43 @@
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO]
+[INFO] demo-parent
+[INFO] module-a
+[INFO] module-b
+[INFO]
+[INFO] --- versions-maven-plugin:2.18.0:display-dependency-updates (default-cli) @ demo-parent ---
+[INFO]
+[INFO] The following dependencies in Dependency Management have newer versions:
+[INFO]   com.google.guava:guava ........................... 30.0-jre -> 33.6.0-jre
+[INFO]   junit:junit ........................................... 4.12 -> 4.13.2
+[INFO]   org.apache.commons:commons-lang3 ...................... 3.9 -> 3.20.0
+[INFO]   org.slf4j:slf4j-api ................................ 1.7.30 -> 2.1.0-alpha1
+[INFO]
+[INFO] --- versions-maven-plugin:2.18.0:display-dependency-updates (default-cli) @ module-a ---
+[INFO]
+[INFO] The following dependencies in Dependencies have newer versions:
+[INFO]   com.google.guava:guava ........................... 30.0-jre -> 33.6.0-jre
+[INFO]   org.apache.commons:commons-lang3 ...................... 3.9 -> 3.20.0
+[INFO]   org.slf4j:slf4j-api ................................ 1.7.30 -> 2.1.0-alpha1
+[INFO]
+[INFO] --- versions-maven-plugin:2.18.0:display-dependency-updates (default-cli) @ module-b ---
+[INFO]
+[INFO] The following dependencies in Dependencies have newer versions:
+[INFO]   commons-io:commons-io ................................. 2.6 -> 2.22.0
+[INFO]   org.slf4j:slf4j-api ................................ 1.7.30 -> 2.1.0-alpha1
+[INFO]   org.example.really.long.group:an-extremely-long-artifact-id-that-wraps
+[INFO]                                                          1.0.0 -> 2.0.0
+[INFO]
+[INFO] --- versions-maven-plugin:2.18.0:display-plugin-updates (default-cli) @ demo-parent ---
+[INFO]
+[INFO] The following plugin updates are available:
+[INFO]   maven-surefire-plugin ............................. 2.22.0 -> 3.6.0-M1
+[INFO]
+[INFO] --- versions-maven-plugin:2.18.0:display-property-updates (default-cli) @ demo-parent ---
+[INFO]
+[INFO] The following version property updates are available:
+[INFO]   ${junit.version} ...................................... 4.12 -> 4.13.2
+[INFO]
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
