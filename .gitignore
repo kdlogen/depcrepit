@@ -9,11 +9,3 @@ dist/
 venv/
 .pytest_cache/
 .mypy_cache/
-
-# Tool output
-*-modules.txt
-maven-updates.txt
-logs/
-
-# OS
-.DS_Store
