@@ -1,8 +1,8 @@
 import re
 import xml.etree.ElementTree as ET
 
-from mvn_updates.dependabot import ruleset_xml
-from mvn_updates.ignores import STABLE_ONLY_PATTERNS, VENDOR_FORK_PATTERNS, as_ignores
+from depcrepit.dependabot import ruleset_xml
+from depcrepit.ignores import STABLE_ONLY_PATTERNS, VENDOR_FORK_PATTERNS, as_ignores
 
 NS = "{https://www.mojohaus.org/VERSIONS/RULE/3.0.0}"
 

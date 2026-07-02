@@ -1,7 +1,7 @@
 import os
 
-from mvn_updates.parse import parse_log_file, required_width, scan_project
-from mvn_updates.report import (
+from depcrepit.parse import parse_log_file, required_width, scan_project
+from depcrepit.report import (
     distinct_count,
     render_modules,
     render_unique,

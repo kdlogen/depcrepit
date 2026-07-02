@@ -1,7 +1,7 @@
 """Offline tests for dependency:tree parsing and origin annotation."""
-from mvn_updates.deptree import Origin, merge_origins, origin_label, parse_tree_text
-from mvn_updates.parse import Update
-from mvn_updates.report import render_unique
+from depcrepit.deptree import Origin, merge_origins, origin_label, parse_tree_text
+from depcrepit.parse import Update
+from depcrepit.report import render_unique
 
 SAMPLE = r"""
 [INFO] --- maven-dependency-plugin:3.7.0:tree (default-cli) @ demo-parent ---

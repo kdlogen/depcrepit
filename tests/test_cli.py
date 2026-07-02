@@ -1,4 +1,4 @@
-from mvn_updates.cli import build_parser
+from depcrepit.cli import build_parser
 
 
 def test_prereleases_ignored_by_default():

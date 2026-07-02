@@ -28,7 +28,7 @@ def _modules_path(output: str) -> str:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="mvn-updates",
+        prog="depcrepit",
         description="Report available dependency / plugin / property updates for a "
                     "multi-module Maven project, as two de-duplicated text files.",
     )
@@ -84,7 +84,7 @@ def main(argv=None) -> int:
     modules_out = _modules_path(output)
     goals = build_goals(args.plugin_version, not args.no_plugins, not args.no_properties)
 
-    with tempfile.TemporaryDirectory(prefix="mvn-updates.") as work:
+    with tempfile.TemporaryDirectory(prefix="depcrepit.") as work:
         rules_uri = None
         rules, global_ignores = [], []
         if args.dependabot:

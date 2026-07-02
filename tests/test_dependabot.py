@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 
-from mvn_updates.dependabot import (
+from depcrepit.dependabot import (
     build_ruleset,
     convert_text,
     load_yaml,

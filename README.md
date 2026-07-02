@@ -1,14 +1,17 @@
-# mvn-updates
+# depcrepit
 
-**See every available update for a multi-module Maven project — as one clean, de-duplicated list.**
+**How *dep*crepit is your build?** Point it at a multi-module Maven project and get every available
+dependency update as one clean, de-duplicated list.
 
-`mvn-updates` runs the [`versions-maven-plugin`](https://www.mojohaus.org/versions/) for you and turns
+*(decrepit, adj.: worn out or ruined because of age. Like that `junit 4.12` you're still shipping.)*
+
+`depcrepit` runs the [`versions-maven-plugin`](https://www.mojohaus.org/versions/) for you and turns
 its noisy, per-module, often-duplicated output into two tidy text files you can actually read, diff, or
 paste into a ticket. It understands your `dependabot.yml`, ignores pre-releases and vendor forks by
 default, and needs **no Python dependencies** — just Maven on your `PATH`.
 
 ```bash
-mvn-updates -p /path/to/project
+depcrepit -p /path/to/project
 # → maven-updates.txt          (one de-duplicated list for the whole project)
 # → maven-updates-modules.txt  (per-module breakdown, parent-managed deps extracted)
 ```
@@ -17,7 +20,7 @@ mvn-updates -p /path/to/project
 
 Running `versions:display-dependency-updates` across a big multi-module build gives you the same
 update repeated in every module, plugin "updates" that are actually downgrades, and a flood of
-`alpha`/`rc`/vendor-fork candidates you'll never ship. `mvn-updates` fixes all of that:
+`alpha`/`rc`/vendor-fork candidates you'll never ship. `depcrepit` fixes all of that:
 
 - **One list, no duplicates** — a dependency used by 20 modules shows up once.
 - **Parent-managed deps extracted** — anything governed by `dependencyManagement`,
@@ -54,7 +57,7 @@ pip install .            # from a clone / source checkout
 Or run it straight from the source tree without installing:
 
 ```bash
-python -m mvn_updates --help
+python -m depcrepit --help
 ```
 
 **Requirements:** Python ≥ 3.8 and **Maven (`mvn`) on your `PATH`**. `PyYAML` is optional
@@ -65,10 +68,10 @@ when it's absent.
 
 ```bash
 # Everything available, stable + canonical upstream only (the default)
-mvn-updates -p .
+depcrepit -p .
 
 # Only minor/bugfix upgrades, honouring your Dependabot ignores, into a custom path
-mvn-updates -p . -o reports/updates.txt -l minor -d .github/dependabot.yml
+depcrepit -p . -o reports/updates.txt -l minor -d .github/dependabot.yml
 ```
 
 Progress is printed to **stderr**; the report itself goes **only to the files**, which are
@@ -128,14 +131,14 @@ a `versions` constraint are skipped.
 
 ## Filtering pre-releases and vendor forks
 
-By default `mvn-updates` reports the latest **stable, canonical** version. Turn the filters off or add
+By default `depcrepit` reports the latest **stable, canonical** version. Turn the filters off or add
 your own:
 
 ```bash
-mvn-updates -p .                          # stable + canonical upstream only (default)
-mvn-updates -p . --allow-prereleases      # include alpha/beta/milestone/rc/...
-mvn-updates -p . --allow-vendor-forks     # include -atlassian/-redhat/... forks
-mvn-updates -p . --ignore-version '(?i).*mycorp.*'   # ignore one more fork/qualifier
+depcrepit -p .                          # stable + canonical upstream only (default)
+depcrepit -p . --allow-prereleases      # include alpha/beta/milestone/rc/...
+depcrepit -p . --allow-vendor-forks     # include -atlassian/-redhat/... forks
+depcrepit -p . --ignore-version '(?i).*mycorp.*'   # ignore one more fork/qualifier
 ```
 
 This works by adding global `<ignoreVersions>` regex rules so the **plugin** skips those candidates
@@ -147,7 +150,7 @@ dependency whose only candidate happened to be a pre-release). GA qualifiers lik
 
 > **A note on plugin proposals.** `display-plugin-updates` groups proposals by the Maven version they
 > require, can list a version *lower* than the one in use (`3.8.0 -> 3.6.0`), and ignores
-> `allowMajorUpdates`. `mvn-updates` reconciles this: downgrades are dropped, `--level` is enforced,
+> `allowMajorUpdates`. `depcrepit` reconciles this: downgrades are dropped, `--level` is enforced,
 > and the highest in-range upgrade is kept.
 
 ## Library API
@@ -155,11 +158,11 @@ dependency whose only candidate happened to be a pre-release). GA qualifiers lik
 The internals are importable and unit-testable without Maven:
 
 ```python
-from mvn_updates.dependabot import convert_text          # dependabot YAML -> ruleset XML
-from mvn_updates.deptree import parse_tree_text           # dependency:tree -> direct/transitive
-from mvn_updates.parse import parse_log_text, scan_project
-from mvn_updates.report import render_unique, render_modules
-from mvn_updates.maven import build_goals, run, run_tree   # subprocess wrappers
+from depcrepit.dependabot import convert_text          # dependabot YAML -> ruleset XML
+from depcrepit.deptree import parse_tree_text           # dependency:tree -> direct/transitive
+from depcrepit.parse import parse_log_text, scan_project
+from depcrepit.report import render_unique, render_modules
+from depcrepit.maven import build_goals, run, run_tree   # subprocess wrappers
 ```
 
 ## Development
@@ -169,7 +172,7 @@ pip install -e .[dev]
 pytest                 # offline: parsing, dependabot conversion, report rendering
 
 # end-to-end against the bundled fixture (needs Maven + network)
-mvn-updates -p tests/fixtures/multimodule -o /tmp/out.txt -l minor \
+depcrepit -p tests/fixtures/multimodule -o /tmp/out.txt -l minor \
             -d tests/fixtures/multimodule/.github/dependabot.yml
 ```
 
@@ -178,8 +181,8 @@ mvn-updates -p tests/fixtures/multimodule -o /tmp/out.txt -l minor \
 Built and maintained by **Kelemen Balint**.
 
 - GitHub: [@kdlogen](https://github.com/kdlogen)
-- Repository: [github.com/kdlogen/mvn-updates](https://github.com/kdlogen/mvn-updates)
-- Issues & feature requests: [github.com/kdlogen/mvn-updates/issues](https://github.com/kdlogen/mvn-updates/issues)
+- Repository: [github.com/kdlogen/depcrepit](https://github.com/kdlogen/depcrepit)
+- Issues & feature requests: [github.com/kdlogen/depcrepit/issues](https://github.com/kdlogen/depcrepit/issues)
 - Email: [kelemenf.balint@gmail.com](mailto:kelemenf.balint@gmail.com)
 
 Stars, issues, and pull requests are all welcome. ⭐

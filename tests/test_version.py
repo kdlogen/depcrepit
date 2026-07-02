@@ -1,6 +1,6 @@
-from mvn_updates.parse import Update
-from mvn_updates.report import enforce_level, keep_upgrades, render_unique, _header
-from mvn_updates.version import bump_level, compare, is_upgrade, within_level
+from depcrepit.parse import Update
+from depcrepit.report import enforce_level, keep_upgrades, render_unique, _header
+from depcrepit.version import bump_level, compare, is_upgrade, within_level
 
 
 def test_compare_numeric():
