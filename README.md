@@ -1,159 +1,150 @@
 # mvn-updates
 
-Report the available **dependency / plugin / property updates** for a multi-module
-[Maven](https://maven.apache.org/) project using the
-[`versions-maven-plugin`](https://www.mojohaus.org/versions/), as two clean, de-duplicated text
-files. Optionally filter by bump level and by a converted **Dependabot** config.
+**See every available update for a multi-module Maven project — as one clean, de-duplicated list.**
 
-- Single, de-duplicated list across all submodules
-- A per-module breakdown that **extracts parent-managed** dependencies (so `dependencyManagement` /
-  `pluginManagement` / version properties are listed once under the parent, not repeated per module)
-- Major / minor / bugfix bump filtering
-- Converts `dependabot.yml` `ignore` version constraints + name wildcards into a versions ruleset
-- **No required Python dependencies** (standard library only); the only external requirement is Maven
+`mvn-updates` runs the [`versions-maven-plugin`](https://www.mojohaus.org/versions/) for you and turns
+its noisy, per-module, often-duplicated output into two tidy text files you can actually read, diff, or
+paste into a ticket. It understands your `dependabot.yml`, ignores pre-releases and vendor forks by
+default, and needs **no Python dependencies** — just Maven on your `PATH`.
+
+```bash
+mvn-updates -p /path/to/project
+# → maven-updates.txt          (one de-duplicated list for the whole project)
+# → maven-updates-modules.txt  (per-module breakdown, parent-managed deps extracted)
+```
+
+## Why use it
+
+Running `versions:display-dependency-updates` across a big multi-module build gives you the same
+update repeated in every module, plugin "updates" that are actually downgrades, and a flood of
+`alpha`/`rc`/vendor-fork candidates you'll never ship. `mvn-updates` fixes all of that:
+
+- **One list, no duplicates** — a dependency used by 20 modules shows up once.
+- **Parent-managed deps extracted** — anything governed by `dependencyManagement`,
+  `pluginManagement`, or a version `<property>` is listed once under the parent, not repeated per
+  child module.
+- **Stable by default** — `alpha`/`beta`/`milestone`/`rc`/`snapshot`/`preview`/… and vendor
+  redistribution forks (`-atlassian-1`, `-redhat-00001`, …) are filtered out, so you see the latest
+  *real* release. (GA markers like `.Final`/`.RELEASE` and build metadata like `-jre` are kept.)
+- **Bump-level filtering** — limit the whole report to `major`, `minor`, or `bugfix` upgrades.
+- **Dependabot-aware** — point it at your `dependabot.yml` and its `ignore` rules are honoured.
+- **Plugin proposals cleaned up** — downgrades dropped, your `--level` enforced, highest in-range
+  upgrade kept.
+- **Zero install friction** — pure standard library; the only requirement is Maven.
 
 ## Install
 
 ```bash
-# from a clone / source checkout
-pip install .
+pip install .            # from a clone / source checkout
+```
 
-# or run without installing
+Or run it straight from the source tree without installing:
+
+```bash
 python -m mvn_updates --help
 ```
 
-Requires Python ≥ 3.8 and **Maven (`mvn`) on PATH**. `PyYAML` is optional (`pip install .[yaml]`) —
-it makes Dependabot parsing more robust, but a built-in fallback parser is used when it is absent.
+**Requirements:** Python ≥ 3.8 and **Maven (`mvn`) on your `PATH`**. `PyYAML` is optional
+(`pip install .[yaml]`) and makes Dependabot parsing more robust — a built-in fallback parser is used
+when it's absent.
 
-## Usage
-
-```bash
-mvn-updates [options]
-# equivalently: python -m mvn_updates [options]
-```
-
-| Option | Description |
-|----------------------|-------------------------------------------------------------------|
-| `-o, --output FILE`  | Base output path (default `maven-updates.txt`). The per-module file is `<base>-modules.txt`. |
-| `-p, --project DIR`  | Maven project root (default `.`). |
-| `-l, --level LEVEL`  | Allowed bump level: `major` \| `minor` \| `bugfix` (default `major`). |
-| `-d, --dependabot FILE` | A `dependabot.yml` to convert into a versions ruleset. |
-| `--allow-prereleases` | Include non-stable versions. By **default** alpha/beta/milestone/rc/snapshot/preview/… are ignored so the latest **stable** is reported (GA markers like `.Final` / `.RELEASE` and build metadata like `-jre` are kept). |
-| `--allow-vendor-forks` | Include third-party redistribution forks (`-atlassian-1`, `-redhat-00001`, …). By **default** these are ignored in favour of the canonical upstream release. |
-| `--ignore-version REGEX` | Full-match regex of versions to ignore (repeatable); for any other fork/qualifier, e.g. `--ignore-version '(?i).*mycorp.*'`. |
-| `-w, --line-width N` | Output line width; clamped to a minimum of **120** (default `120`). |
-| `--no-plugins`       | Skip plugin updates. |
-| `--no-properties`    | Skip Maven version-property updates. |
-| `--plugin-version V` | `versions-maven-plugin` version (default `2.18.0`). |
-| `--mvn PATH`         | Path to the `mvn` executable (default `mvn`). |
-| `-V, --version`      | Print version. |
-
-Example:
+## Quick start
 
 ```bash
-mvn-updates -p /path/to/project -o reports/updates.txt -l minor -d .github/dependabot.yml
+# Everything available, stable + canonical upstream only (the default)
+mvn-updates -p .
+
+# Only minor/bugfix upgrades, honouring your Dependabot ignores, into a custom path
+mvn-updates -p . -o reports/updates.txt -l minor -d .github/dependabot.yml
 ```
 
-Both files are **overwritten** on every run. Nothing but progress is printed to the console
-(progress goes to stderr); the report goes only to the files.
+Progress is printed to **stderr**; the report itself goes **only to the files**, which are
+overwritten on every run.
 
-## Output
+## The two reports
 
-### `<output>.txt` — single, de-duplicated list
-Every available update across all modules merged into one list (a dependency referenced by several
-modules appears once), grouped into `Dependencies`, `Plugins`, `Properties`.
+| File | What's in it |
+|---------------------------|--------------------------------------------------------------------|
+| `<output>.txt`            | Every available update across all modules, merged and de-duplicated, grouped into **Dependencies**, **Plugins**, **Properties**. |
+| `<output>-modules.txt`    | Per-module breakdown. Parent-managed updates are listed once under the parent; each child shows only its own non-managed updates. Modules with nothing of their own are omitted. |
 
-### `<output>-modules.txt` — per-module breakdown with parent extraction
-Updates managed in the parent (`<dependencyManagement>`, `<pluginManagement>`, version
-`<properties>`) are listed once under the parent module and removed from the child modules. Each
-child module then shows only its own, non-managed dependency updates; modules with nothing
-module-specific are omitted.
+## Options
 
-## Dependabot conversion
+| Option                   | Description |
+|--------------------------|-------------------------------------------------------------------|
+| `-p, --project DIR`      | Maven project root (default `.`). |
+| `-o, --output FILE`      | Base output path (default `maven-updates.txt`); the per-module file is `<base>-modules.txt`. |
+| `-l, --level LEVEL`      | Allowed bump level: `major` \| `minor` \| `bugfix` (default `major`). |
+| `-d, --dependabot FILE`  | A `dependabot.yml` to convert into a versions ruleset. |
+| `--allow-prereleases`    | Include non-stable versions (off by default). |
+| `--allow-vendor-forks`   | Include third-party redistribution forks like `-atlassian-1`, `-redhat-00001` (off by default). |
+| `--ignore-version REGEX` | Full-match regex of versions to ignore (repeatable), e.g. `--ignore-version '(?i).*mycorp.*'`. |
+| `-w, --line-width N`     | Output line width; clamped to a minimum of **120** (default `120`). |
+| `--no-plugins`           | Skip plugin updates. |
+| `--no-properties`        | Skip Maven version-property updates. |
+| `--plugin-version V`     | `versions-maven-plugin` version (default `2.18.0`). |
+| `--mvn PATH`             | Path to the `mvn` executable (default `mvn`). |
+| `-V, --version`          | Print version. |
 
-For each `package-ecosystem: maven` block, the **version constraints** of the `ignore` entries are
+## Working with Dependabot
+
+Already curating updates with `dependabot.yml`? Reuse those rules instead of duplicating them. For
+each `package-ecosystem: maven` block, the **version constraints** of the `ignore` entries are
 converted into a versions ruleset (passed via `-Dmaven.version.rules`):
 
-| Dependabot | Converted to |
-|------------|--------------|
-| `dependency-name` + `versions: [">=X"]` / `["<X"]` … | `<rule>` with `<ignoreVersion type="range">[X,)</…>` etc. |
-| `dependency-name` + `versions: ["X.x"]` / `["X.*"]`  | `<rule>` with `<ignoreVersion type="regex">X\..*</…>` |
-| `dependency-name` + `versions: ["X"]` (exact)        | `<rule>` with `<ignoreVersion type="exact">X</…>` |
-| `dependency-name` **alone** (no `versions`) / `versions: ["*"]` | ignore **all** versions of that dependency (`<ignoreVersion type="regex">.*</…>`) |
-| `dependency-name: "*"` + `versions`                  | top-level (global) `<ignoreVersions>` |
+| Dependabot entry                                                | Converted to |
+|----------------------------------------------------------------|--------------|
+| `dependency-name` + `versions: [">=X"]` / `["<X"]` …           | `<ignoreVersion type="range">[X,)</…>` etc. |
+| `dependency-name` + `versions: ["X.x"]` / `["X.*"]`            | `<ignoreVersion type="regex">X\..*</…>` |
+| `dependency-name` + `versions: ["X"]` (exact)                  | `<ignoreVersion type="exact">X</…>` |
+| `dependency-name` **alone** / `versions: ["*"]`               | ignore **all** versions of that dependency |
+| `dependency-name: "*"` + `versions`                            | top-level (global) `<ignoreVersions>` |
 
-To ignore a whole group entirely, list the name with no version constraint (Dependabot's own
-"block this dependency" form):
+To block a whole group, list the name with no version constraint (Dependabot's own "block this
+dependency" form):
 
 ```yaml
 ignore:
   - dependency-name: "com.example.internal:*"   # never report updates for this group
 ```
 
-**Wildcards** in `dependency-name` (e.g. `org.slf4j:*`, `org.springframework.*`) are passed straight
-through — the ruleset matches `*` in both `groupId` and `artifactId` natively (and `groupId` also has
-an implicit trailing `.*`). `update-types` are **out of scope and ignored** — use `-l/--level` for a
-project-wide limit. Entries without a `versions` constraint are skipped.
+**Wildcards** in `dependency-name` (`org.slf4j:*`, `org.springframework.*`) are passed through
+natively. `update-types` are **ignored** — use `-l/--level` for a project-wide limit. Entries without
+a `versions` constraint are skipped.
 
-## Filtering non-stable / unofficial versions
+## Filtering pre-releases and vendor forks
 
-**By default**, semantic pre-releases (alpha/beta/milestone/RC/snapshot/preview/dev/incubating/ea/…)
-are ignored, so the latest **stable** version is reported instead of e.g. `3.7.0-M4`. Pass
-`--allow-prereleases` to turn this off:
-
-Common third-party **vendor forks** (`-atlassian-1`, `-redhat-00001`, `-jbossorg-1`, `-mulesoft-1`)
-are *also* ignored by default — they repackage a stable upstream version (e.g. selenium
-`3.141.59-atlassian-1`) and are rarely what you want. Add your own with `--ignore-version`.
+By default `mvn-updates` reports the latest **stable, canonical** version. Turn the filters off or add
+your own:
 
 ```bash
 mvn-updates -p .                          # stable + canonical upstream only (default)
 mvn-updates -p . --allow-prereleases      # include alpha/beta/milestone/rc/...
 mvn-updates -p . --allow-vendor-forks     # include -atlassian/-redhat/... forks
-
-# ignore an additional fork/qualifier (regex is full-matched against the whole version)
-mvn-updates -p . --ignore-version '(?i).*mycorp.*'
+mvn-updates -p . --ignore-version '(?i).*mycorp.*'   # ignore one more fork/qualifier
 ```
 
-This works by adding global `<ignoreVersions>` regex rules to the ruleset, so the **plugin** skips
-those candidates and resolves the newest acceptable one — it is *not* a post-filter (which would
-wrongly hide a dependency whose only reported candidate was a pre-release/fork). The default filter
-deliberately keeps GA qualifiers like `.Final`, `.RELEASE`, `.GA` and build metadata like `-jre`;
-what makes `5.6.15.Final-atlassian-4` unofficial is the vendor `-atlassian` suffix. All of this
-combines with `-d/--dependabot`.
+This works by adding global `<ignoreVersions>` regex rules so the **plugin** skips those candidates
+and resolves the newest acceptable one — it is *not* a post-filter (which would wrongly hide a
+dependency whose only candidate happened to be a pre-release). GA qualifiers like `.Final`,
+`.RELEASE`, `.GA` and build metadata like `-jre` are deliberately kept; what makes
+`5.6.15.Final-atlassian-4` "unofficial" is the vendor `-atlassian` suffix. All of this combines with
+`-d/--dependabot`.
 
-> **Plugin proposals / downgrades / level:** `display-plugin-updates` groups proposals by the Maven
-> version they require, can list a version *lower* than the one in use (e.g. `3.8.0 -> 3.6.0`), and
-> ignores `allowMajorUpdates`. So plugin proposals are reconciled in `report.py`/`version.py`:
-> non-upgrades (downgrades) are dropped, `--level` is enforced (the goal does report intermediate
-> same-major versions, so e.g. `-l minor` yields `2.22.0 -> 2.22.2` rather than a `3.x` bump), and the
-> highest in-range upgrade is kept. Dependencies and properties are constrained by the plugin itself.
+> **A note on plugin proposals.** `display-plugin-updates` groups proposals by the Maven version they
+> require, can list a version *lower* than the one in use (`3.8.0 -> 3.6.0`), and ignores
+> `allowMajorUpdates`. `mvn-updates` reconciles this: downgrades are dropped, `--level` is enforced,
+> and the highest in-range upgrade is kept.
 
 ## Library API
 
-The pieces are importable and unit-testable without Maven:
+The internals are importable and unit-testable without Maven:
 
 ```python
 from mvn_updates.dependabot import convert_text          # dependabot YAML -> ruleset XML
 from mvn_updates.parse import parse_log_text, scan_project
 from mvn_updates.report import render_unique, render_modules
 from mvn_updates.maven import build_goals, run            # subprocess wrapper
-```
-
-## Project layout
-
-```
-src/mvn_updates/
-  cli.py         # argparse + orchestration (run maven, parse, write reports)
-  maven.py       # build goals, allow-flags, run mvn via subprocess
-  dependabot.py  # dependabot.yml -> versions ruleset (PyYAML optional, builtin fallback)
-  ignores.py     # built-in stable-only ignore patterns (+ custom regex helper)
-  parse.py       # parse captured maven output -> Update records; scan poms
-  version.py     # Maven-style version comparison (filters downgrades, picks highest)
-  report.py      # render the two output files
-tests/
-  test_dependabot.py, test_parse.py
-  data/sample-maven.log          # captured plugin output (offline parsing tests)
-  fixtures/multimodule/          # small multi-module Maven project + dependabot.yml
 ```
 
 ## Development
@@ -166,3 +157,21 @@ pytest                 # offline: parsing, dependabot conversion, report renderi
 mvn-updates -p tests/fixtures/multimodule -o /tmp/out.txt -l minor \
             -d tests/fixtures/multimodule/.github/dependabot.yml
 ```
+
+## Author
+
+Built and maintained by **Kelemen Balint**.
+
+- GitHub: [@kdlogen](https://github.com/kdlogen)
+- Repository: [github.com/kdlogen/mvn-updates](https://github.com/kdlogen/mvn-updates)
+- Issues & feature requests: [github.com/kdlogen/mvn-updates/issues](https://github.com/kdlogen/mvn-updates/issues)
+- Email: [kelemenf.balint@gmail.com](mailto:kelemenf.balint@gmail.com)
+
+Stars, issues, and pull requests are all welcome. ⭐
+
+## License
+
+[WTFPL](LICENSE) — Do What The Fuck You Want To Public License. Free software, forever. Use it,
+fork it, sell it, rename your cat after it. No strings attached.
+</content>
+</invoke>
