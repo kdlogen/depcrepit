@@ -176,6 +176,12 @@ depcrepit -p tests/fixtures/multimodule -o /tmp/out.txt -l minor \
             -d tests/fixtures/multimodule/.github/dependabot.yml
 ```
 
+## Roadmap
+
+**Gradle support** is planned — same reports, same filters, powered by the
+[gradle-versions-plugin](https://github.com/ben-manes/gradle-versions-plugin) injected via an init
+script (no changes to the analyzed project). See [TODO.md](TODO.md) for the full plan.
+
 ## Author
 
 Built and maintained by **Kelemen Balint**.
