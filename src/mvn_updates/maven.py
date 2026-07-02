@@ -58,7 +58,10 @@ def run(project_pom: str, goals: List[str], width: int, level: str,
            f"-DallowMajorUpdates={str(major).lower()}",
            f"-DallowMinorUpdates={str(minor).lower()}",
            f"-DallowIncrementalUpdates={str(incremental).lower()}",
-           "-DprocessDependencyManagement=true"]
+           "-DprocessDependencyManagement=true",
+           # Treat an imported BOM as the updatable unit: report the BOM's own update instead of
+           # dissolving it into every artifact it manages (dozens of phantom "unused" entries).
+           "-DprocessDependencyManagementTransitive=false"]
     if rules_uri:
         cmd.append(f"-Dmaven.version.rules={rules_uri}")
     return _run(cmd, tail_lines)

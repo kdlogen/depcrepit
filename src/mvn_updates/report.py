@@ -52,11 +52,13 @@ def _dedup_by_name(records: Iterable[Update]) -> List[Row]:
     return [(name, ov[0], ov[1]) for name, ov in best.items()]
 
 
-def _fmt_rows(rows: List[Row], origins: Optional[Origins] = None) -> List[str]:
+def _fmt_rows(rows: List[Row], origins: Optional[Origins] = None,
+              boms: Optional[Set[str]] = None) -> List[str]:
     """Return aligned, non-wrapped text lines for ``(name, old, new)`` rows.
 
     When ``origins`` is given (dependency sections only), each row is annotated with how the
-    dependency enters the tree: ``[direct]`` or ``[via <root dependency>]``.
+    dependency enters the tree: ``[direct]``, ``[via <root dependency>]``, or ``[bom import]``
+    for imported BOMs (which never appear in ``dependency:tree``).
     """
     if not rows:
         return []
@@ -65,9 +67,14 @@ def _fmt_rows(rows: List[Row], origins: Optional[Origins] = None) -> List[str]:
     if origins is None:
         return [f"  {name.ljust(name_w)}  {old.rjust(old_w)} -> {new}"
                 for name, old, new in sorted(set(rows))]
+
+    def label(name: str) -> str:
+        if boms and name in boms:
+            return "bom import"
+        return origin_label(name, origins)
+
     new_w = max(len(n) for _, _, n in rows)
-    return [f"  {name.ljust(name_w)}  {old.rjust(old_w)} -> {new.ljust(new_w)}"
-            f"  [{origin_label(name, origins)}]"
+    return [f"  {name.ljust(name_w)}  {old.rjust(old_w)} -> {new.ljust(new_w)}  [{label(name)}]"
             for name, old, new in sorted(set(rows))]
 
 
@@ -81,7 +88,8 @@ def _header(project: str, level: str, records: Iterable[Update]) -> List[str]:
 
 
 def render_unique(records: List[Update], header: List[str],
-                  origins: Optional[Origins] = None) -> str:
+                  origins: Optional[Origins] = None,
+                  boms: Optional[Set[str]] = None) -> str:
     deps = [r for r in records if r.scope in ("deps", "depmgmt")]
     plugins = [r for r in records if r.scope == "plugin"]
     props = [r for r in records if r.scope == "property"]
@@ -90,7 +98,7 @@ def render_unique(records: List[Update], header: List[str],
     for title, recs, orig in (("Dependencies", deps, origins),
                               ("Plugins", plugins, None),
                               ("Properties", props, None)):
-        rows = _fmt_rows(_dedup_by_name(recs), orig)
+        rows = _fmt_rows(_dedup_by_name(recs), orig, boms)
         lines.append("")
         lines.append(f"== {title} ({len(rows)}) ==")
         lines.extend(rows if rows else ["  (none)"])
@@ -98,7 +106,8 @@ def render_unique(records: List[Update], header: List[str],
 
 
 def render_modules(records: List[Update], parents: List[str], managed: Set[str],
-                   header: List[str], origins_by_module: Optional[ModuleOrigins] = None) -> str:
+                   header: List[str], origins_by_module: Optional[ModuleOrigins] = None,
+                   boms: Optional[Set[str]] = None) -> str:
     by_module = {}
     for r in records:
         by_module.setdefault(r.module, []).append(r)
@@ -125,7 +134,7 @@ def render_modules(records: List[Update], parents: List[str], managed: Set[str],
     for title, recs, orig in (("Dependency Management", shared_dm, merged),
                               ("Plugins", shared_plugins, None),
                               ("Properties", shared_props, None)):
-        rows = _fmt_rows(_dedup_by_name(recs), orig)
+        rows = _fmt_rows(_dedup_by_name(recs), orig, boms)
         if rows:
             lines.append(f"  {title}:")
             lines.extend("  " + ln for ln in rows)
@@ -138,7 +147,7 @@ def render_modules(records: List[Update], parents: List[str], managed: Set[str],
         mod_origins = None
         if origins_by_module is not None:
             mod_origins = origins_by_module.get(module, merged)
-        rows = _fmt_rows(_dedup_by_name(own), mod_origins)
+        rows = _fmt_rows(_dedup_by_name(own), mod_origins, boms)
         if not rows:
             continue
         lines.append("")
@@ -152,11 +161,12 @@ def write_reports(records: List[Update], project: str, out_path: str, modules_ou
                   level: str, origins_by_module: Optional[ModuleOrigins] = None) -> int:
     """Write both report files (overwriting). Returns the distinct-update count."""
     from .parse import scan_project
-    parents, managed = scan_project(project)
+    parents, managed, boms = scan_project(project)
     header = _header(project, level, records)
     merged = merge_origins(origins_by_module) if origins_by_module else None
-    _write(out_path, render_unique(records, header, merged))
-    _write(modules_out_path, render_modules(records, parents, managed, header, origins_by_module))
+    _write(out_path, render_unique(records, header, merged, boms))
+    _write(modules_out_path,
+           render_modules(records, parents, managed, header, origins_by_module, boms))
     return distinct_count(records)
 
 

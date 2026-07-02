@@ -32,10 +32,15 @@ class Update:
 
 
 # --------------------------------------------------------------------------- project model
-def scan_project(project_dir: str) -> Tuple[List[str], Set[str]]:
-    """Return ``(parent_artifacts, managed_dep_ga)`` by reading the project's pom.xml files."""
+def scan_project(project_dir: str) -> Tuple[List[str], Set[str], Set[str]]:
+    """Return ``(parent_artifacts, managed_dep_ga, bom_ga)`` by reading the project's poms.
+
+    ``bom_ga`` holds the ``dependencyManagement`` entries imported as BOMs
+    (``<type>pom</type><scope>import</scope>``); those never appear in ``dependency:tree``.
+    """
     parent_artifacts: List[str] = []
     managed: Set[str] = set()
+    boms: Set[str] = set()
     for pom in glob.glob(os.path.join(project_dir, "**", "pom.xml"), recursive=True):
         try:
             root = ET.parse(pom).getroot()
@@ -51,7 +56,10 @@ def scan_project(project_dir: str) -> Tuple[List[str], Set[str]]:
             a = _text(dep.find(f"{POM_NS}artifactId"))
             if g and a:
                 managed.add(f"{g}:{a}")
-    return parent_artifacts, managed
+                if (_text(dep.find(f"{POM_NS}scope")) == "import"
+                        and _text(dep.find(f"{POM_NS}type")) == "pom"):
+                    boms.add(f"{g}:{a}")
+    return parent_artifacts, managed, boms
 
 
 def _text(node) -> str:

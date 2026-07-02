@@ -33,6 +33,12 @@ update repeated in every module, plugin "updates" that are actually downgrades, 
   junit:junit                 4.12 -> 4.13.2  [direct]
   org.hamcrest:hamcrest-core   1.3 -> 3.0     [via junit:junit]
   ```
+- **BOM-import aware** — a framework BOM (`<type>pom</type><scope>import</scope>`) is reported as
+  its own single `[bom import]` update instead of being exploded into the dozens of artifacts it
+  manages:
+  ```
+  com.fasterxml.jackson:jackson-bom  2.13.0 -> 2.22.0  [bom import]
+  ```
 - **Bump-level filtering** — limit the whole report to `major`, `minor`, or `bugfix` upgrades.
 - **Dependabot-aware** — point it at your `dependabot.yml` and its `ignore` rules are honoured.
 - **Plugin proposals cleaned up** — downgrades dropped, your `--level` enforced, highest in-range

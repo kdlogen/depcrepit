@@ -50,17 +50,20 @@ def test_unique_report_dedupes_across_modules():
     assert "${junit.version}" in text
 
 
-def test_scan_project_finds_parent_and_managed():
-    parents, managed = scan_project(PROJECT)
+def test_scan_project_finds_parent_managed_and_boms():
+    parents, managed, boms = scan_project(PROJECT)
     assert "demo-parent" in parents
     assert "com.google.guava:guava" in managed
     assert "org.slf4j:slf4j-api" in managed
     assert "commons-io:commons-io" not in managed  # module-specific, not managed
+    # type=pom + scope=import entries are recognised as BOM imports
+    assert "com.fasterxml.jackson:jackson-bom" in boms
+    assert "com.google.guava:guava" not in boms
 
 
 def test_modules_report_extracts_parent_and_isolates_module_specific():
     records = _records()
-    parents, managed = scan_project(PROJECT)
+    parents, managed, _boms = scan_project(PROJECT)
     text = render_modules(records, parents, managed, _header(PROJECT, "major", records))
     # parent section holds the shared/managed entries
     assert "[demo-parent]" in text

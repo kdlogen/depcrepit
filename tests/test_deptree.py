@@ -69,6 +69,19 @@ def test_render_unique_annotates_dependencies_only():
     assert "[" not in plugin_line
 
 
+def test_render_unique_labels_bom_imports():
+    merged = merge_origins(parse_tree_text(SAMPLE))
+    records = [
+        Update("depmgmt", "demo-parent", "com.fasterxml.jackson:jackson-bom", "2.13.0", "2.22.0"),
+        Update("deps", "module-b", "junit:junit", "4.12", "4.13.2"),
+    ]
+    text = render_unique(records, [], merged, boms={"com.fasterxml.jackson:jackson-bom"})
+    bom_line = next(ln for ln in text.splitlines() if "jackson-bom" in ln)
+    # a BOM import never appears in dependency:tree; it must not be called "unused"
+    assert "[bom import]" in bom_line
+    assert "managed, unused" not in text
+
+
 def test_render_unique_without_origins_unchanged():
     records = [Update("deps", "m", "junit:junit", "4.12", "4.13.2")]
     text = render_unique(records, [])
