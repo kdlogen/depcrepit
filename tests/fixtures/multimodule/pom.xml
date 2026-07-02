@@ -46,6 +46,14 @@
         <version>${junit.version}</version>
         <scope>test</scope>
       </dependency>
+      <!-- TRANSITIVE-only: not declared by any module, pulled in via junit:junit.
+           Exercises the [via junit:junit] origin annotation. -->
+      <dependency>
+        <groupId>org.hamcrest</groupId>
+        <artifactId>hamcrest-core</artifactId>
+        <version>1.3</version>
+        <scope>test</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 

@@ -8,8 +8,9 @@ import tempfile
 
 from . import __version__
 from .dependabot import ruleset_xml, rules_from_file
+from .deptree import parse_tree_text
 from .ignores import STABLE_ONLY_PATTERNS, VENDOR_FORK_PATTERNS, as_ignores
-from .maven import MavenError, build_goals, ensure_available, run
+from .maven import MavenError, build_goals, ensure_available, run, run_tree
 from .parse import parse_log_text, required_width
 from .report import enforce_level, write_reports
 
@@ -54,6 +55,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help=f"output line width; clamped to a minimum of {MIN_WIDTH}")
     p.add_argument("--no-plugins", action="store_true", help="skip plugin updates")
     p.add_argument("--no-properties", action="store_true", help="skip property updates")
+    p.add_argument("--no-origins", action="store_true",
+                   help="skip the extra dependency:tree run that annotates each dependency "
+                        "as [direct] or [via <root dependency>] (transitive)")
     p.add_argument("--plugin-version", default="2.18.0",
                    help="versions-maven-plugin version (default: %(default)s)")
     p.add_argument("--mvn", default="mvn", help="path to the mvn executable (default: mvn)")
@@ -123,9 +127,19 @@ def main(argv=None) -> int:
             print(str(exc), file=sys.stderr)
             return 1
 
+    origins = None
+    if not args.no_origins:
+        try:
+            _progress("running dependency:tree (direct/transitive classification)")
+            origins = parse_tree_text(run_tree(pom, mvn=args.mvn))
+        except MavenError as exc:
+            # non-fatal: the report is still useful without origin annotations
+            _progress(f"warning: dependency:tree failed (exit {exc.returncode}); "
+                      "origin annotations skipped")
+
     # display-plugin-updates ignores allowMajorUpdates, so enforce --level on plugins ourselves
     records = enforce_level(records, args.level)
-    count = write_reports(records, project, output, modules_out, args.level)
+    count = write_reports(records, project, output, modules_out, args.level, origins)
     _progress(f"done: {count} distinct updates")
     _progress(f"wrote: {output}")
     _progress(f"wrote: {modules_out}")

@@ -26,6 +26,13 @@ update repeated in every module, plugin "updates" that are actually downgrades, 
 - **Stable by default** — `alpha`/`beta`/`milestone`/`rc`/`snapshot`/`preview`/… and vendor
   redistribution forks (`-atlassian-1`, `-redhat-00001`, …) are filtered out, so you see the latest
   *real* release. (GA markers like `.Final`/`.RELEASE` and build metadata like `-jre` are kept.)
+- **Direct vs. transitive at a glance** — every dependency row is annotated `[direct]` or
+  `[via <root dependency>]`, so you instantly know whether you own the update or it rides in
+  through something else:
+  ```
+  junit:junit                 4.12 -> 4.13.2  [direct]
+  org.hamcrest:hamcrest-core   1.3 -> 3.0     [via junit:junit]
+  ```
 - **Bump-level filtering** — limit the whole report to `major`, `minor`, or `bugfix` upgrades.
 - **Dependabot-aware** — point it at your `dependabot.yml` and its `ignore` rules are honoured.
 - **Plugin proposals cleaned up** — downgrades dropped, your `--level` enforced, highest in-range
@@ -82,6 +89,7 @@ overwritten on every run.
 | `-w, --line-width N`     | Output line width; clamped to a minimum of **120** (default `120`). |
 | `--no-plugins`           | Skip plugin updates. |
 | `--no-properties`        | Skip Maven version-property updates. |
+| `--no-origins`           | Skip the extra `dependency:tree` run that annotates each dependency as `[direct]` or `[via <root dependency>]`. |
 | `--plugin-version V`     | `versions-maven-plugin` version (default `2.18.0`). |
 | `--mvn PATH`             | Path to the `mvn` executable (default `mvn`). |
 | `-V, --version`          | Print version. |
@@ -142,9 +150,10 @@ The internals are importable and unit-testable without Maven:
 
 ```python
 from mvn_updates.dependabot import convert_text          # dependabot YAML -> ruleset XML
+from mvn_updates.deptree import parse_tree_text           # dependency:tree -> direct/transitive
 from mvn_updates.parse import parse_log_text, scan_project
 from mvn_updates.report import render_unique, render_modules
-from mvn_updates.maven import build_goals, run            # subprocess wrapper
+from mvn_updates.maven import build_goals, run, run_tree   # subprocess wrappers
 ```
 
 ## Development

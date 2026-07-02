@@ -61,7 +61,15 @@ def run(project_pom: str, goals: List[str], width: int, level: str,
            "-DprocessDependencyManagement=true"]
     if rules_uri:
         cmd.append(f"-Dmaven.version.rules={rules_uri}")
+    return _run(cmd, tail_lines)
 
+
+def run_tree(project_pom: str, mvn: str = "mvn", tail_lines: int = 25) -> str:
+    """Run ``dependency:tree`` against ``project_pom`` and return the combined log text."""
+    return _run([mvn, "-B", "-ntp", "-f", project_pom, "dependency:tree"], tail_lines)
+
+
+def _run(cmd: List[str], tail_lines: int) -> str:
     proc = subprocess.run(cmd, capture_output=True, text=True)
     log = (proc.stdout or "") + (proc.stderr or "")
     if proc.returncode != 0:
