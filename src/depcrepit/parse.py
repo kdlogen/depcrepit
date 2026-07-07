@@ -5,7 +5,7 @@ import glob
 import os
 import re
 from dataclasses import dataclass
-from typing import List, Set, Tuple
+from typing import Dict, List, Set, Tuple
 import xml.etree.ElementTree as ET
 
 # Reactor header, e.g.:
@@ -64,6 +64,52 @@ def scan_project(project_dir: str) -> Tuple[List[str], Set[str], Set[str]]:
 
 def _text(node) -> str:
     return node.text.strip() if node is not None and node.text else ""
+
+
+def scan_properties(project_dir: str) -> Dict[str, str]:
+    """Return the merged ``<properties>`` of all pom.xml files in the project.
+
+    Used to resolve ``${...}`` version placeholders: with the raw-model dependencyManagement
+    processing, the plugin reports a BOM whose version is a property as e.g.
+    ``${wildfly.version} -> 26.1.3.Final``, which cannot be compared against the proposal.
+    """
+    props: Dict[str, str] = {}
+    for pom in glob.glob(os.path.join(project_dir, "**", "pom.xml"), recursive=True):
+        try:
+            root = ET.parse(pom).getroot()
+        except ET.ParseError:
+            continue
+        for node in root.findall(f"{POM_NS}properties/*"):
+            name = node.tag.replace(POM_NS, "")
+            if node.text and node.text.strip():
+                props[name] = node.text.strip()
+    return props
+
+
+_PROP_RE = re.compile(r"\$\{([^}]+)\}")
+
+
+def resolve_versions(records: List[Update], props: Dict[str, str]) -> List[Update]:
+    """Substitute known ``${property}`` placeholders in record versions.
+
+    After resolution a no-op row like ``${wildfly.version} -> 26.1.3.Final`` (where the property
+    already holds ``26.1.3.Final``) becomes comparable and is dropped by the upgrade filter.
+    Unknown properties are left untouched.
+    """
+    def resolve(version: str) -> str:
+        for _ in range(10):  # allow properties referencing properties, guard against cycles
+            m = _PROP_RE.search(version)
+            if not m or m.group(1) not in props:
+                return version
+            version = version[:m.start()] + props[m.group(1)] + version[m.end():]
+        return version
+
+    out: List[Update] = []
+    for r in records:
+        old, new = resolve(r.old), resolve(r.new)
+        out.append(r if old == r.old and new == r.new
+                   else Update(r.scope, r.module, r.name, old, new))
+    return out
 
 
 # --------------------------------------------------------------------------- log parsing

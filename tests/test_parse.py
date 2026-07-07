@@ -1,8 +1,16 @@
 import os
 
-from depcrepit.parse import parse_log_file, required_width, scan_project
+from depcrepit.parse import (
+    Update,
+    parse_log_file,
+    required_width,
+    resolve_versions,
+    scan_project,
+    scan_properties,
+)
 from depcrepit.report import (
     distinct_count,
+    keep_upgrades,
     render_modules,
     render_unique,
     write_reports,
@@ -59,6 +67,33 @@ def test_scan_project_finds_parent_managed_and_boms():
     # type=pom + scope=import entries are recognised as BOM imports
     assert "com.fasterxml.jackson:jackson-bom" in boms
     assert "com.google.guava:guava" not in boms
+
+
+def test_scan_properties_reads_all_poms():
+    props = scan_properties(PROJECT)
+    assert props["junit.version"] == "4.12"
+    assert props["jackson.version"] == "2.13.0"
+
+
+def test_resolve_versions_drops_noop_property_rows():
+    # raw-model BOM row: current version is an unresolved property that already holds the
+    # proposed version -> after resolution the row is a no-op and must be filtered out
+    props = {"wildfly.version": "26.1.3.Final"}
+    recs = resolve_versions(
+        [Update("depmgmt", "root", "org.wildfly.bom:wildfly-jakartaee8-with-tools",
+                "${wildfly.version}", "26.1.3.Final")], props)
+    assert recs[0].old == "26.1.3.Final"
+    assert keep_upgrades(recs) == []
+
+
+def test_resolve_versions_keeps_real_updates_and_unknown_properties():
+    props = {"netty.version": "4.1.135.Final"}
+    real, unknown = resolve_versions(
+        [Update("depmgmt", "root", "io.netty:netty-bom", "${netty.version}", "4.2.16.Final"),
+         Update("depmgmt", "root", "g:a", "${no.such.property}", "2.0")], props)
+    assert (real.old, real.new) == ("4.1.135.Final", "4.2.16.Final")
+    assert keep_upgrades([real]) == [real]
+    assert unknown.old == "${no.such.property}"  # left untouched
 
 
 def test_modules_report_extracts_parent_and_isolates_module_specific():

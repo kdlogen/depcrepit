@@ -160,8 +160,11 @@ def render_modules(records: List[Update], parents: List[str], managed: Set[str],
 def write_reports(records: List[Update], project: str, out_path: str, modules_out_path: str,
                   level: str, origins_by_module: Optional[ModuleOrigins] = None) -> int:
     """Write both report files (overwriting). Returns the distinct-update count."""
-    from .parse import scan_project
+    from .parse import resolve_versions, scan_project, scan_properties
     parents, managed, boms = scan_project(project)
+    # resolve ${...} version placeholders so no-op rows (property already at the proposed
+    # version) become comparable and are dropped by the upgrade filter
+    records = resolve_versions(records, scan_properties(project))
     header = _header(project, level, records)
     merged = merge_origins(origins_by_module) if origins_by_module else None
     _write(out_path, render_unique(records, header, merged, boms))

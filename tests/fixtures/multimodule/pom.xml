@@ -20,6 +20,8 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <!-- Deliberately old: exercises display-property-updates -->
     <junit.version>4.12</junit.version>
+    <!-- BOM version behind a property: exercises ${...} resolution in the report -->
+    <jackson.version>2.13.0</jackson.version>
   </properties>
 
   <!-- Shared across all modules: should appear ONCE under the parent in the -modules report. -->
@@ -59,7 +61,7 @@
       <dependency>
         <groupId>com.fasterxml.jackson</groupId>
         <artifactId>jackson-bom</artifactId>
-        <version>2.13.0</version>
+        <version>${jackson.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
