@@ -66,6 +66,27 @@ def _text(node) -> str:
     return node.text.strip() if node is not None and node.text else ""
 
 
+def scan_versionless(project_dir: str) -> Set[str]:
+    """Return the ``groupId:artifactId`` of dependencies declared without a ``<version>``.
+
+    A dependency that has no version anywhere in the project and is not covered by the project's
+    own ``dependencyManagement`` must get its version from an imported BOM (or an external parent):
+    its update is only actionable by bumping that BOM, not the dependency itself.
+    """
+    versionless: Set[str] = set()
+    for pom in glob.glob(os.path.join(project_dir, "**", "pom.xml"), recursive=True):
+        try:
+            root = ET.parse(pom).getroot()
+        except ET.ParseError:
+            continue
+        for dep in root.findall(f"{POM_NS}dependencies/{POM_NS}dependency"):
+            g = _text(dep.find(f"{POM_NS}groupId"))
+            a = _text(dep.find(f"{POM_NS}artifactId"))
+            if g and a and not _text(dep.find(f"{POM_NS}version")):
+                versionless.add(f"{g}:{a}")
+    return versionless
+
+
 def scan_properties(project_dir: str) -> Dict[str, str]:
     """Return the merged ``<properties>`` of all pom.xml files in the project.
 

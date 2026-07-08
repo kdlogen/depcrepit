@@ -7,6 +7,7 @@ from depcrepit.parse import (
     resolve_versions,
     scan_project,
     scan_properties,
+    scan_versionless,
 )
 from depcrepit.report import (
     distinct_count,
@@ -67,6 +68,19 @@ def test_scan_project_finds_parent_managed_and_boms():
     # type=pom + scope=import entries are recognised as BOM imports
     assert "com.fasterxml.jackson:jackson-bom" in boms
     assert "com.google.guava:guava" not in boms
+
+
+def test_scan_versionless_detects_bom_managed():
+    parents, managed, boms = scan_project(PROJECT)
+    versionless = scan_versionless(PROJECT)
+    # declared without <version>: version comes from parent depMgmt or an imported BOM
+    assert "com.fasterxml.jackson.core:jackson-databind" in versionless
+    assert "org.apache.commons:commons-lang3" in versionless
+    # commons-io is declared WITH a version in module-b
+    assert "commons-io:commons-io" not in versionless
+    # bom-managed = versionless and not covered by the project's own dependencyManagement
+    bom_managed = versionless - managed
+    assert bom_managed == {"com.fasterxml.jackson.core:jackson-databind"}
 
 
 def test_scan_properties_reads_all_poms():

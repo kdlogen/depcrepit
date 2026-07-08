@@ -2,7 +2,8 @@ import re
 import xml.etree.ElementTree as ET
 
 from depcrepit.dependabot import ruleset_xml
-from depcrepit.ignores import STABLE_ONLY_PATTERNS, VENDOR_FORK_PATTERNS, as_ignores
+from depcrepit.ignores import (COMPAT_VARIANT_PATTERNS, DATE_STAMP_PATTERNS,
+                               STABLE_ONLY_PATTERNS, VENDOR_FORK_PATTERNS, as_ignores)
 
 NS = "{https://www.mojohaus.org/VERSIONS/RULE/3.0.0}"
 
@@ -16,8 +17,32 @@ def test_stable_only_catches_prereleases():
     for v in ["3.7.0-M4", "2.0.0-alpha1", "1.8.0-beta4", "5.0.0.RC1",
               "1.0-SNAPSHOT", "6.0.0-preview", "4.0.0.CR1",
               "1.0.0-milestone1", "2.0.0-dev3", "3.0.0-incubating",
-              "11.0.0-ea", "1.0.0-canary", "4.0.0-nightly"]:
+              "11.0.0-ea", "1.0.0-canary", "4.0.0-nightly",
+              "3.0.1-b12", "2.3.1-b02"]:  # glassfish/jaxb promoted beta builds
         assert _matches_any(v, STABLE_ONLY_PATTERNS), v
+
+
+def test_date_stamp_versions_caught():
+    # pure dates and maven-1 date.time stamps
+    for v in ["20040616", "20030911", "19991231", "20040102.233541"]:
+        assert _matches_any(v, DATE_STAMP_PATTERNS), v
+
+
+def test_date_stamp_spares_normal_and_calendar_versions():
+    # calendar-style (2024.1), x.y.z and non-date 8-digit strings must NOT be ignored
+    for v in ["3.2.2", "2024.1", "2024.1.2", "20240132", "1.20040616"]:
+        assert not _matches_any(v, DATE_STAMP_PATTERNS), v
+
+
+def test_compat_variants_caught():
+    for v in ["1.18.11-jdk5", "1.18.11.jdk8", "2.0-JDK6"]:
+        assert _matches_any(v, COMPAT_VARIANT_PATTERNS), v
+
+
+def test_compat_variants_spare_primary_flavors():
+    # -jre / -android are the primary line for some artifacts (guava) and must survive
+    for v in ["33.6.0-jre", "33.6.0-android", "1.18.11", "5.6.15.Final"]:
+        assert not _matches_any(v, COMPAT_VARIANT_PATTERNS), v
 
 
 def test_stable_only_spares_official_releases():

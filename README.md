@@ -26,9 +26,12 @@ update repeated in every module, plugin "updates" that are actually downgrades, 
 - **Parent-managed deps extracted** — anything governed by `dependencyManagement`,
   `pluginManagement`, or a version `<property>` is listed once under the parent, not repeated per
   child module.
-- **Stable by default** — `alpha`/`beta`/`milestone`/`rc`/`snapshot`/`preview`/… and vendor
+- **Stable by default** — `alpha`/`beta`/`milestone`/`rc`/`-b12`/`snapshot`/`preview`/… and vendor
   redistribution forks (`-atlassian-1`, `-redhat-00001`, …) are filtered out, so you see the latest
   *real* release. (GA markers like `.Final`/`.RELEASE` and build metadata like `-jre` are kept.)
+- **No junk proposals** — maven-1-era date-stamp versions (`3.2.2 -> 20040616`, which Maven orders
+  above any `x.y.z`) and compatibility rebuilds (`1.18.11 -> 1.18.11-jdk5`) are ignored by default,
+  so the plugin falls back to the newest *sensible* candidate instead.
 - **Direct vs. transitive at a glance** — every dependency row is annotated `[direct]` or
   `[via <root dependency>]`, so you instantly know whether you own the update or it rides in
   through something else:
@@ -36,6 +39,9 @@ update repeated in every module, plugin "updates" that are actually downgrades, 
   junit:junit                 4.12 -> 4.13.2  [direct]
   org.hamcrest:hamcrest-core   1.3 -> 3.0     [via junit:junit]
   ```
+  Dependencies declared without a `<version>` (inherited from an imported BOM) are additionally
+  marked `bom-managed` — their update is actionable only by bumping the BOM. Hide them entirely
+  with `--no-bom-managed`.
 - **BOM-import aware** — a framework BOM (`<type>pom</type><scope>import</scope>`) is reported as
   its own single `[bom import]` update instead of being exploded into the dozens of artifacts it
   manages:
@@ -94,11 +100,14 @@ overwritten on every run.
 | `-d, --dependabot FILE`  | A `dependabot.yml` to convert into a versions ruleset. |
 | `--allow-prereleases`    | Include non-stable versions (off by default). |
 | `--allow-vendor-forks`   | Include third-party redistribution forks like `-atlassian-1`, `-redhat-00001` (off by default). |
+| `--allow-date-versions`  | Include maven-1-era date-stamp versions like `20040616` (off by default). |
+| `--allow-variants`       | Include compatibility variant builds like `-jdk5` (off by default). |
 | `--ignore-version REGEX` | Full-match regex of versions to ignore (repeatable), e.g. `--ignore-version '(?i).*mycorp.*'`. |
 | `-w, --line-width N`     | Output line width; clamped to a minimum of **120** (default `120`). |
 | `--no-plugins`           | Skip plugin updates. |
 | `--no-properties`        | Skip Maven version-property updates. |
 | `--no-origins`           | Skip the extra `dependency:tree` run that annotates each dependency as `[direct]` or `[via <root dependency>]`. |
+| `--no-bom-managed`       | Hide dependencies whose version comes from an imported BOM (declared without `<version>`). |
 | `--plugin-version V`     | `versions-maven-plugin` version (default `2.18.0`). |
 | `--mvn PATH`             | Path to the `mvn` executable (default `mvn`). |
 | `-V, --version`          | Print version. |

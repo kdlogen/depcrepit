@@ -53,12 +53,14 @@ def _dedup_by_name(records: Iterable[Update]) -> List[Row]:
 
 
 def _fmt_rows(rows: List[Row], origins: Optional[Origins] = None,
-              boms: Optional[Set[str]] = None) -> List[str]:
+              boms: Optional[Set[str]] = None,
+              bom_managed: Optional[Set[str]] = None) -> List[str]:
     """Return aligned, non-wrapped text lines for ``(name, old, new)`` rows.
 
     When ``origins`` is given (dependency sections only), each row is annotated with how the
     dependency enters the tree: ``[direct]``, ``[via <root dependency>]``, or ``[bom import]``
-    for imported BOMs (which never appear in ``dependency:tree``).
+    for imported BOMs (which never appear in ``dependency:tree``). Dependencies whose version is
+    supplied by an imported BOM additionally get ``, bom-managed`` (bump the BOM, not the dep).
     """
     if not rows:
         return []
@@ -71,7 +73,10 @@ def _fmt_rows(rows: List[Row], origins: Optional[Origins] = None,
     def label(name: str) -> str:
         if boms and name in boms:
             return "bom import"
-        return origin_label(name, origins)
+        lab = origin_label(name, origins)
+        if bom_managed and name in bom_managed:
+            lab += ", bom-managed"
+        return lab
 
     new_w = max(len(n) for _, _, n in rows)
     return [f"  {name.ljust(name_w)}  {old.rjust(old_w)} -> {new.ljust(new_w)}  [{label(name)}]"
@@ -89,7 +94,8 @@ def _header(project: str, level: str, records: Iterable[Update]) -> List[str]:
 
 def render_unique(records: List[Update], header: List[str],
                   origins: Optional[Origins] = None,
-                  boms: Optional[Set[str]] = None) -> str:
+                  boms: Optional[Set[str]] = None,
+                  bom_managed: Optional[Set[str]] = None) -> str:
     deps = [r for r in records if r.scope in ("deps", "depmgmt")]
     plugins = [r for r in records if r.scope == "plugin"]
     props = [r for r in records if r.scope == "property"]
@@ -98,7 +104,7 @@ def render_unique(records: List[Update], header: List[str],
     for title, recs, orig in (("Dependencies", deps, origins),
                               ("Plugins", plugins, None),
                               ("Properties", props, None)):
-        rows = _fmt_rows(_dedup_by_name(recs), orig, boms)
+        rows = _fmt_rows(_dedup_by_name(recs), orig, boms, bom_managed)
         lines.append("")
         lines.append(f"== {title} ({len(rows)}) ==")
         lines.extend(rows if rows else ["  (none)"])
@@ -107,7 +113,8 @@ def render_unique(records: List[Update], header: List[str],
 
 def render_modules(records: List[Update], parents: List[str], managed: Set[str],
                    header: List[str], origins_by_module: Optional[ModuleOrigins] = None,
-                   boms: Optional[Set[str]] = None) -> str:
+                   boms: Optional[Set[str]] = None,
+                   bom_managed: Optional[Set[str]] = None) -> str:
     by_module = {}
     for r in records:
         by_module.setdefault(r.module, []).append(r)
@@ -134,7 +141,7 @@ def render_modules(records: List[Update], parents: List[str], managed: Set[str],
     for title, recs, orig in (("Dependency Management", shared_dm, merged),
                               ("Plugins", shared_plugins, None),
                               ("Properties", shared_props, None)):
-        rows = _fmt_rows(_dedup_by_name(recs), orig, boms)
+        rows = _fmt_rows(_dedup_by_name(recs), orig, boms, bom_managed)
         if rows:
             lines.append(f"  {title}:")
             lines.extend("  " + ln for ln in rows)
@@ -147,7 +154,7 @@ def render_modules(records: List[Update], parents: List[str], managed: Set[str],
         mod_origins = None
         if origins_by_module is not None:
             mod_origins = origins_by_module.get(module, merged)
-        rows = _fmt_rows(_dedup_by_name(own), mod_origins, boms)
+        rows = _fmt_rows(_dedup_by_name(own), mod_origins, boms, bom_managed)
         if not rows:
             continue
         lines.append("")
@@ -158,18 +165,26 @@ def render_modules(records: List[Update], parents: List[str], managed: Set[str],
 
 
 def write_reports(records: List[Update], project: str, out_path: str, modules_out_path: str,
-                  level: str, origins_by_module: Optional[ModuleOrigins] = None) -> int:
+                  level: str, origins_by_module: Optional[ModuleOrigins] = None,
+                  hide_bom_managed: bool = False) -> int:
     """Write both report files (overwriting). Returns the distinct-update count."""
-    from .parse import resolve_versions, scan_project, scan_properties
+    from .parse import resolve_versions, scan_project, scan_properties, scan_versionless
     parents, managed, boms = scan_project(project)
     # resolve ${...} version placeholders so no-op rows (property already at the proposed
     # version) become comparable and are dropped by the upgrade filter
     records = resolve_versions(records, scan_properties(project))
+    # deps declared without <version> and not in the project's own dependencyManagement get
+    # their version from an imported BOM; only meaningful when the project imports one
+    bom_managed = (scan_versionless(project) - managed) if boms else set()
+    if hide_bom_managed:
+        records = [r for r in records
+                   if not (r.scope in ("deps", "depmgmt") and r.name in bom_managed)]
     header = _header(project, level, records)
     merged = merge_origins(origins_by_module) if origins_by_module else None
-    _write(out_path, render_unique(records, header, merged, boms))
+    _write(out_path, render_unique(records, header, merged, boms, bom_managed))
     _write(modules_out_path,
-           render_modules(records, parents, managed, header, origins_by_module, boms))
+           render_modules(records, parents, managed, header, origins_by_module, boms,
+                          bom_managed))
     return distinct_count(records)
 
 

@@ -21,6 +21,7 @@ STABLE_ONLY_PATTERNS: List[str] = [
     r"(?i).*[-._]beta.*",
     r"(?i).*[-._]milestone.*",   # word form: -milestone1
     r"(?i).*[-._]m\d+.*",        # short milestone: -M4 / .M4
+    r"(?i).*[-._]b\d+.*",        # promoted beta build: -b12 / .b02 (glassfish/jaxb convention)
     r"(?i).*[-._]rc\d*.*",       # release candidate: -RC1 / .RC1
     r"(?i).*[-._]cr\d*.*",       # (older) candidate release: .CR1
     r"(?i).*[-._]snapshot.*",
@@ -42,6 +43,24 @@ VENDOR_FORK_PATTERNS: List[str] = [
     r"(?i).*[-._]redhat[-._.].*",      # x.y.z-redhat-00001
     r"(?i).*[-._]jbossorg[-._.].*",
     r"(?i).*[-._]mulesoft[-._.].*",
+]
+
+
+# Maven-1-era date(-time)-stamp versions (commons-collections 20040616 / 20040102.233541,
+# antlr 20030911, ...). Maven's version ordering treats them as numerically huge, so they get
+# proposed as "upgrades" for artifacts whose real versioning is x.y.z. Full-match YYYYMMDD with
+# an optional .HHMMSS part, so calendar-style versions like 2024.1 are unaffected; opt out with
+# --allow-date-versions.
+DATE_STAMP_PATTERNS: List[str] = [
+    r"(19|20)\d{2}(0\d|1[0-2])([0-2]\d|3[01])(\.\d{1,6})?",
+]
+
+
+# Compatibility variant builds of an otherwise identical release (byte-buddy 1.18.11-jdk5, ...).
+# The plain version is the canonical one to target; opt out with --allow-variants. Deliberately
+# does NOT cover flavor qualifiers that ARE the primary line for some artifacts (-jre, -android).
+COMPAT_VARIANT_PATTERNS: List[str] = [
+    r"(?i).*[-._]jdk\d+.*",
 ]
 
 

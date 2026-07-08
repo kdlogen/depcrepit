@@ -9,7 +9,8 @@ import tempfile
 from . import __version__
 from .dependabot import ruleset_xml, rules_from_file
 from .deptree import parse_tree_text
-from .ignores import STABLE_ONLY_PATTERNS, VENDOR_FORK_PATTERNS, as_ignores
+from .ignores import (COMPAT_VARIANT_PATTERNS, DATE_STAMP_PATTERNS, STABLE_ONLY_PATTERNS,
+                      VENDOR_FORK_PATTERNS, as_ignores)
 from .maven import MavenError, build_goals, ensure_available, run, run_tree
 from .parse import parse_log_text, required_width
 from .report import enforce_level, write_reports
@@ -48,6 +49,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--allow-vendor-forks", action="store_true",
                    help="include third-party redistribution forks (e.g. -atlassian-1, -redhat-00001); "
                         "by DEFAULT these are ignored in favour of the canonical upstream release")
+    p.add_argument("--allow-date-versions", action="store_true",
+                   help="include maven-1-era date-stamp versions (e.g. 20040616); by DEFAULT these "
+                        "are ignored because Maven orders them above any x.y.z version")
+    p.add_argument("--allow-variants", action="store_true",
+                   help="include compatibility variant builds (e.g. -jdk5); by DEFAULT these are "
+                        "ignored in favour of the canonical plain release")
     p.add_argument("--ignore-version", metavar="REGEX", action="append", default=[],
                    help="full-match regex of versions to ignore (repeatable); e.g. for vendor "
                         r"forks: --ignore-version '(?i).*atlassian.*'")
@@ -58,6 +65,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-origins", action="store_true",
                    help="skip the extra dependency:tree run that annotates each dependency "
                         "as [direct] or [via <root dependency>] (transitive)")
+    p.add_argument("--no-bom-managed", action="store_true",
+                   help="hide dependencies whose version comes from an imported BOM (declared "
+                        "without <version>); their update is actionable only by bumping the BOM")
     p.add_argument("--plugin-version", default="2.18.0",
                    help="versions-maven-plugin version (default: %(default)s)")
     p.add_argument("--mvn", default="mvn", help="path to the mvn executable (default: mvn)")
@@ -99,6 +109,10 @@ def main(argv=None) -> int:
             global_ignores += as_ignores(STABLE_ONLY_PATTERNS)
         if not args.allow_vendor_forks:  # vendor forks ignored by default
             global_ignores += as_ignores(VENDOR_FORK_PATTERNS)
+        if not args.allow_date_versions:  # date-stamp junk ignored by default
+            global_ignores += as_ignores(DATE_STAMP_PATTERNS)
+        if not args.allow_variants:  # jdkN compatibility rebuilds ignored by default
+            global_ignores += as_ignores(COMPAT_VARIANT_PATTERNS)
         if args.ignore_version:
             global_ignores += as_ignores(args.ignore_version)
 
@@ -139,7 +153,8 @@ def main(argv=None) -> int:
 
     # display-plugin-updates ignores allowMajorUpdates, so enforce --level on plugins ourselves
     records = enforce_level(records, args.level)
-    count = write_reports(records, project, output, modules_out, args.level, origins)
+    count = write_reports(records, project, output, modules_out, args.level, origins,
+                          hide_bom_managed=args.no_bom_managed)
     _progress(f"done: {count} distinct updates")
     _progress(f"wrote: {output}")
     _progress(f"wrote: {modules_out}")
