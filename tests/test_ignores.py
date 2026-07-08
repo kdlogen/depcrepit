@@ -18,7 +18,8 @@ def test_stable_only_catches_prereleases():
               "1.0-SNAPSHOT", "6.0.0-preview", "4.0.0.CR1",
               "1.0.0-milestone1", "2.0.0-dev3", "3.0.0-incubating",
               "11.0.0-ea", "1.0.0-canary", "4.0.0-nightly",
-              "3.0.1-b12", "2.3.1-b02"]:  # glassfish/jaxb promoted beta builds
+              # promoted beta builds: with separator, attached, and jaxb's date-build form
+              "3.0.1-b12", "2.3.1-b02", "1.1b4", "2.4.0-b180830.0359"]:
         assert _matches_any(v, STABLE_ONLY_PATTERNS), v
 
 

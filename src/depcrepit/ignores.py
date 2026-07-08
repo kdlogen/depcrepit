@@ -21,7 +21,9 @@ STABLE_ONLY_PATTERNS: List[str] = [
     r"(?i).*[-._]beta.*",
     r"(?i).*[-._]milestone.*",   # word form: -milestone1
     r"(?i).*[-._]m\d+.*",        # short milestone: -M4 / .M4
-    r"(?i).*[-._]b\d+.*",        # promoted beta build: -b12 / .b02 (glassfish/jaxb convention)
+    r"(?i).*[\d._-]b\d+.*",      # promoted beta build: -b12 / .b02 / 1.1b4 / -b180830.0359
+                                 # (b<number> after a digit or separator; plain words like
+                                 # "web2" in a qualifier are not matched)
     r"(?i).*[-._]rc\d*.*",       # release candidate: -RC1 / .RC1
     r"(?i).*[-._]cr\d*.*",       # (older) candidate release: .CR1
     r"(?i).*[-._]snapshot.*",
